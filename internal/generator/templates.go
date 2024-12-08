@@ -3,50 +3,50 @@ package generator
 const mainTemplate = `package main
 
 import (
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"time"
 
+	"{{.ModuleName}}/internal/controller"
+	"{{.ModuleName}}/internal/repository"
 	"github.com/klass-lk/ginboot"
-	"{{ .ModuleName }}/internal/controller"
-	"{{ .ModuleName }}/internal/repository"
-	"{{ .ModuleName }}/internal/service"
 )
 
 func main() {
-	client, err := mongo.Connect(nil, options.Client().ApplyURI("mongodb://localhost:27017"))
+	// Initialize MongoDB client
+	client, err := mongo.Connect(nil, options.Client().ApplyURI(os.Getenv("MONGODB_URI")))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer client.Disconnect(nil)
 
+	database := client.Database(os.Getenv("DB_NAME"))
+
 	// Initialize repositories
-	userRepository := repository.NewUserRepository(client.Database("{{ .ProjectName }}"))
+	userRepo := repository.NewUserRepository(database)
 
-	// Initialize server
-	server := ginboot.New()
+	// Initialize controllers
+	userController := controller.NewUserController(userRepo)
 
-	// Set base path for all routes
-	server.SetBasePath("/api/v1")
+	// Initialize Ginboot app
+	app := ginboot.New()
 
-	// Configure CORS with custom settings
-	server.CustomCORS(
-		[]string{"http://localhost:3000", "https://yourdomain.com"},   // Allow specific origins
-		[]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},           // Allow specific methods
-		[]string{"Origin", "Content-Type", "Authorization", "Accept"}, // Allow specific headers
-		24*time.Hour, // Max age of preflight requests
-	)
+	// Set JWT secret for auth
+	ginboot.SetJWTSecret(os.Getenv("JWT_SECRET"))
 
-	// Initialize services
-	userService := service.NewUserService(userRepository)
+	// API routes
+	api := app.Group("/api/v1")
+	
+	// Public routes
+	userGroup := api.Group("/users")
+	userController.Register(userGroup)
 
-	// Initialize and register controllers
-	userController := controller.NewUserController(userService)
+	// Protected routes example
+	protected := api.Group("/protected")
+	protected.Use(ginboot.AuthRequired())
+	// Add protected routes here
 
-	server.RegisterController("/users", userController)
-
-	if err := server.Start(8080); err != nil {
+	// Start server
+	if err := app.Run(":8080"); err != nil {
 		log.Fatal(err)
 	}
 }`
@@ -128,20 +128,19 @@ func (s *userService) CreateUser(user model.User) error {
 const userControllerTemplate = `package controller
 
 import (
-	"{{ .ModuleName }}/internal/model"
-	"{{ .ModuleName }}/internal/service"
+	"{{.ModuleName}}/internal/model"
+	"{{.ModuleName}}/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/klass-lk/ginboot"
-	"net/http"
 )
 
 type UserController struct {
-	userService service.UserService
+	userRepo *repository.UserRepository
 }
 
-func NewUserController(userService service.UserService) *UserController {
+func NewUserController(userRepo *repository.UserRepository) *UserController {
 	return &UserController{
-		userService: userService,
+		userRepo: userRepo,
 	}
 }
 
@@ -150,31 +149,38 @@ func (c *UserController) Register(group *ginboot.ControllerGroup) {
 	group.POST("", c.CreateUser)
 }
 
-func (c *UserController) GetUser(ctx *gin.Context) {
+func (c *UserController) GetUser(ctx *ginboot.Context) {
 	id := ctx.Param("id")
 
-	user, err := c.userService.GetUser(id)
+	// Example of using auth context
+	authCtx := ctx.GetAuthContext()
+	if authCtx != nil {
+		// Use auth context data if needed
+		_ = authCtx.UserID
+	}
+
+	user, err := c.userRepo.FindByID(id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(404, gin.H{"error": "User not found"})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, user)
+	ctx.JSON(200, user)
 }
 
-func (c *UserController) CreateUser(ctx *gin.Context) {
+func (c *UserController) CreateUser(ctx *ginboot.Context) {
 	var user model.User
 	if err := ctx.ShouldBindJSON(&user); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := c.userService.CreateUser(user); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := c.userRepo.Create(&user); err != nil {
+		ctx.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, user)
+	ctx.JSON(201, user)
 }`
 
 const makefileTemplate = `.PHONY: build clean build-{{ .ProjectName }}Function
