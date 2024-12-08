@@ -1,7 +1,7 @@
 package main
 
 import (
-	"ginboot-cli/cmd"
+	"github.com/klass-lk/ginboot-cli/cmd"
 	"log"
 )
 

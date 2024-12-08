@@ -1,4 +1,4 @@
-module ginboot-cli
+module github.com/klass-lk/ginboot-cli
 
 go 1.21
 
