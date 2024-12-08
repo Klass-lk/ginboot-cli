@@ -56,7 +56,37 @@ The build process will:
 2. Create a deployment package
 3. Store build artifacts in `.aws-sam/build/`
 
-### Deploying to AWS
+## Deployment Options
+
+### Docker Deployment
+
+The project includes Docker and docker-compose configurations for easy deployment:
+
+1. Build and run with docker-compose:
+```bash
+docker-compose up --build
+```
+
+This will:
+- Build the Go application
+- Start a MongoDB container
+- Create a Docker network
+- Set up volume for MongoDB data persistence
+- Expose the API on port 8080
+
+2. Access your API at `http://localhost:8080/api/v1`
+
+To run in detached mode:
+```bash
+docker-compose up -d
+```
+
+To stop the services:
+```bash
+docker-compose down
+```
+
+### AWS Lambda Deployment
 
 Deploy your application to AWS Lambda:
 

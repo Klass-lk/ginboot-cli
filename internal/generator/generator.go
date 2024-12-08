@@ -40,10 +40,12 @@ func (g *ProjectGenerator) Generate() error {
 
 	// Generate files
 	files := map[string]string{
-		"main.go":       mainTemplate,
-		"go.mod":        goModTemplate,
-		"Makefile":      makefileTemplate,
-		"template.yaml": templateYamlTemplate,
+		"main.go":            mainTemplate,
+		"go.mod":             goModTemplate,
+		"Makefile":           makefileTemplate,
+		"template.yaml":      templateYamlTemplate,
+		"Dockerfile":         dockerfileTemplate,
+		"docker-compose.yml": dockerComposeTemplate,
 	}
 
 	for filename, tmpl := range files {

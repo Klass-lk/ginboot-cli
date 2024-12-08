@@ -170,22 +170,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	}
 
 	if err := c.userService.CreateUser(user); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})🚀 Deploying myproject...
-		
-		📝 No ginboot-app.yml found. Please provide deployment details:
-		Stack name [myproject]: 
-		AWS Region [us-east-1]: ap-south-1
-		Use default S3 bucket? (Y/n): Y
-		ℹ️  Using SAM's default S3 bucket
-		💾 Configuration saved to ginboot-app.yml
-		
-		⚙️ Deployment configuration:
-		  Stack name: myproject
-		  Region: ap-south-1
-		
-		Do you want to proceed with deployment? (y/N): y
-		
-		🔨 Starting deployment...
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -252,3 +237,67 @@ Outputs:
     Description: API Gateway {{ .ProjectName }} Endpoint
     Value:
       Fn::Sub: https://${{"{"}}{{ .ProjectName }}API}.execute-api.${AWS::Region}.amazonaws.com/prod`
+
+const dockerfileTemplate = `# Build stage
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o main .
+
+# Final stage
+FROM alpine:latest
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /app/main .
+
+# Expose port
+EXPOSE 8080
+
+# Run the application
+CMD ["./main"]
+`
+
+const dockerComposeTemplate = `version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+      - DB_NAME={{.ProjectName}}
+    depends_on:
+      - mongodb
+    networks:
+      - {{.ProjectName}}-network
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - {{.ProjectName}}-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  {{.ProjectName}}-network:
+    driver: bridge
+`
