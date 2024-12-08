@@ -3,17 +3,19 @@ package generator
 const mainTemplate = `package main
 
 import (
-	"log"
-	"time"
-
+	"github.com/klass-lk/ginboot"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"{{.ModuleName}}/internal/controller"
 	"{{.ModuleName}}/internal/repository"
 	"github.com/klass-lk/ginboot"
+	"log"
+	"os"
 )
 
 func main() {
 	// Initialize MongoDB client
-	client, err := mongo.Connect(nil, options.Client().ApplyURI(os.Getenv("MONGODB_URI")))
+	client, err := mongo.Connect(nil, options.Client().ApplyURI("mongodb://localhost:27017"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,9 +32,6 @@ func main() {
 	// Initialize Ginboot app
 	app := ginboot.New()
 
-	// Set JWT secret for auth
-	ginboot.SetJWTSecret(os.Getenv("JWT_SECRET"))
-
 	// API routes
 	api := app.Group("/api/v1")
 	
@@ -40,13 +39,8 @@ func main() {
 	userGroup := api.Group("/users")
 	userController.Register(userGroup)
 
-	// Protected routes example
-	protected := api.Group("/protected")
-	protected.Use(ginboot.AuthRequired())
-	// Add protected routes here
-
 	// Start server
-	if err := app.Run(":8080"); err != nil {
+	if err := app.Start(8080); err != nil {
 		log.Fatal(err)
 	}
 }`
@@ -153,13 +147,14 @@ func (c *UserController) GetUser(ctx *ginboot.Context) {
 	id := ctx.Param("id")
 
 	// Example of using auth context
-	authCtx := ctx.GetAuthContext()
-	if authCtx != nil {
-		// Use auth context data if needed
-		_ = authCtx.UserID
+	authCtx, err := ctx.GetAuthContext()
+	if err != nil {
+		return
 	}
+	// Use auth context data if needed
+	_ = authCtx.UserID
 
-	user, err := c.userRepo.FindByID(id)
+	user, err := c.userRepo.FindById(id)
 	if err != nil {
 		ctx.JSON(404, gin.H{"error": "User not found"})
 		return
@@ -175,7 +170,7 @@ func (c *UserController) CreateUser(ctx *ginboot.Context) {
 		return
 	}
 
-	if err := c.userRepo.Create(&user); err != nil {
+	if err := c.userRepo.Save(user); err != nil {
 		ctx.JSON(500, gin.H{"error": err.Error()})
 		return
 	}

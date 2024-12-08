@@ -27,9 +27,7 @@ func (g *ProjectGenerator) Generate() error {
 		"internal/controller",
 		"internal/repository",
 		"internal/model",
-		"internal/route",
 		"internal/service",
-		"config",
 	}
 
 	for _, dir := range dirs {
