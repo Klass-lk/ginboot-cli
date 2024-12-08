@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/danushkaherath/klass-go/ginboot-cli/internal/generator"
+	"ginboot-cli/internal/generator"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
