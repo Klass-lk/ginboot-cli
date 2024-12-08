@@ -28,6 +28,8 @@ func (g *ProjectGenerator) Generate() error {
 		"internal/repository",
 		"internal/model",
 		"internal/route",
+		"internal/service",
+		"config",
 	}
 
 	for _, dir := range dirs {
@@ -52,8 +54,10 @@ func (g *ProjectGenerator) Generate() error {
 
 	// Generate internal package files
 	internalFiles := map[string]string{
-		"internal/controller/ping_controller.go": pingControllerTemplate,
-		"internal/route/routes.go":               routesTemplate,
+		"internal/controller/user_controller.go": userControllerTemplate,
+		"internal/model/user.go":                 userModelTemplate,
+		"internal/repository/user_repository.go": userRepositoryTemplate,
+		"internal/service/user_service.go":       userServiceTemplate,
 	}
 
 	for filename, tmpl := range internalFiles {
