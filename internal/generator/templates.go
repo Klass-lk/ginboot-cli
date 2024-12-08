@@ -57,7 +57,7 @@ go 1.21
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.0.11
+	github.com/klass-lk/ginboot v1.0.13
 	go.mongodb.org/mongo-driver v1.13.1
 )`
 
