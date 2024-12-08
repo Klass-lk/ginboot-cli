@@ -170,7 +170,22 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	}
 
 	if err := c.userService.CreateUser(user); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})🚀 Deploying myproject...
+		
+		📝 No ginboot-app.yml found. Please provide deployment details:
+		Stack name [myproject]: 
+		AWS Region [us-east-1]: ap-south-1
+		Use default S3 bucket? (Y/n): Y
+		ℹ️  Using SAM's default S3 bucket
+		💾 Configuration saved to ginboot-app.yml
+		
+		⚙️ Deployment configuration:
+		  Stack name: myproject
+		  Region: ap-south-1
+		
+		Do you want to proceed with deployment? (y/N): y
+		
+		🔨 Starting deployment...
 		return
 	}
 
