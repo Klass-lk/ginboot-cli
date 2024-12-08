@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
+	"regexp"
 )
 
 var (
@@ -20,6 +21,12 @@ var newCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectName = args[0]
+
+		// Validate project name (alphanumeric only)
+		if !isValidProjectName(projectName) {
+			return fmt.Errorf("invalid project name '%s': must contain only letters and numbers", projectName)
+		}
+
 		if moduleName == "" {
 			moduleName = fmt.Sprintf("github.com/%s/%s", os.Getenv("USER"), projectName)
 		}
@@ -43,6 +50,12 @@ var newCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+// isValidProjectName checks if the project name contains only letters and numbers
+func isValidProjectName(name string) bool {
+	matched, _ := regexp.MatchString("^[a-zA-Z0-9]+$", name)
+	return matched
 }
 
 func init() {
