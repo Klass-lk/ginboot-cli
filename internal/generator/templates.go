@@ -94,7 +94,7 @@ Outputs:
   {{ .ProjectName }}Endpoint:
     Description: API Gateway {{ .ProjectName }} Endpoint
     Value:
-      Fn::Sub: https://${{{ .ProjectName }}API}.execute-api.${AWS::Region}.amazonaws.com/prod`
+      Fn::Sub: https://${{"{"}}{{ .ProjectName }}API}.execute-api.${AWS::Region}.amazonaws.com/prod`
 
 const pingControllerTemplate = `package controller
 
