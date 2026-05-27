@@ -236,8 +236,8 @@ go 1.21
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.0.13
-	github.com/klass-lk/ginboot/db/mongo v1.0.13
+	github.com/klass-lk/ginboot v1.10.0
+	github.com/klass-lk/ginboot/db/mongo v1.10.0
 	go.mongodb.org/mongo-driver v1.17.1
 )`
 
@@ -412,8 +412,8 @@ go 1.21
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.0.13
-	github.com/klass-lk/ginboot/db/sql v1.0.13
+	github.com/klass-lk/ginboot v1.10.0
+	github.com/klass-lk/ginboot/db/sql v1.10.0
 	github.com/lib/pq v1.10.9
 )`
 
@@ -423,8 +423,8 @@ go 1.21
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.0.13
-	github.com/klass-lk/ginboot/db/sql v1.0.13
+	github.com/klass-lk/ginboot v1.10.0
+	github.com/klass-lk/ginboot/db/sql v1.10.0
 	github.com/go-sql-driver/mysql v1.8.1
 )`
 
@@ -589,8 +589,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.28.5
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.50.3
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.0.13
-	github.com/klass-lk/ginboot/db/dynamodb v1.0.13
+	github.com/klass-lk/ginboot v1.10.0
+	github.com/klass-lk/ginboot/db/dynamodb v1.10.0
 )`
 
 const dockerComposeDynamodbTemplate = `version: '3.8'
@@ -702,7 +702,7 @@ go 1.21
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.0.13
+	github.com/klass-lk/ginboot v1.10.0
 )`
 
 const dockerComposeNoneTemplate = `version: '3.8'
