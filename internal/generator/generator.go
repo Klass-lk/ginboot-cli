@@ -8,16 +8,18 @@ import (
 )
 
 type ProjectGenerator struct {
-	ProjectPath string
-	ProjectName string
-	ModuleName  string
+	ProjectPath  string
+	ProjectName  string
+	ModuleName   string
+	DatabaseType string
 }
 
-func NewProjectGenerator(projectPath, projectName, moduleName string) *ProjectGenerator {
+func NewProjectGenerator(projectPath, projectName, moduleName, databaseType string) *ProjectGenerator {
 	return &ProjectGenerator{
-		ProjectPath: projectPath,
-		ProjectName: projectName,
-		ModuleName:  moduleName,
+		ProjectPath:  projectPath,
+		ProjectName:  projectName,
+		ModuleName:   moduleName,
+		DatabaseType: databaseType,
 	}
 }
 
@@ -36,14 +38,53 @@ func (g *ProjectGenerator) Generate() error {
 		}
 	}
 
+	// Select templates based on database choice
+	var mainTmpl, goModTmpl, dockerComposeTmpl, userModelTmpl, userRepoTmpl string
+
+	switch g.DatabaseType {
+	case "mongodb":
+		mainTmpl = mainMongoTemplate
+		goModTmpl = goModMongoTemplate
+		dockerComposeTmpl = dockerComposeMongoTemplate
+		userModelTmpl = userModelMongoTemplate
+		userRepoTmpl = userRepositoryMongoTemplate
+	case "postgres":
+		mainTmpl = mainPostgresTemplate
+		goModTmpl = goModPostgresTemplate
+		dockerComposeTmpl = dockerComposePostgresTemplate
+		userModelTmpl = userModelPostgresTemplate
+		userRepoTmpl = userRepositoryPostgresTemplate
+	case "mysql":
+		mainTmpl = mainMysqlTemplate
+		goModTmpl = goModMysqlTemplate
+		dockerComposeTmpl = dockerComposeMysqlTemplate
+		userModelTmpl = userModelMysqlTemplate
+		userRepoTmpl = userRepositoryMysqlTemplate
+	case "dynamodb":
+		mainTmpl = mainDynamodbTemplate
+		goModTmpl = goModDynamodbTemplate
+		dockerComposeTmpl = dockerComposeDynamodbTemplate
+		userModelTmpl = userModelDynamodbTemplate
+		userRepoTmpl = userRepositoryDynamodbTemplate
+	default: // "none"
+		mainTmpl = mainNoneTemplate
+		goModTmpl = goModNoneTemplate
+		dockerComposeTmpl = dockerComposeNoneTemplate
+		userModelTmpl = userModelNoneTemplate
+		userRepoTmpl = userRepositoryNoneTemplate
+	}
+
 	// Generate files
 	files := map[string]string{
-		"main.go":            mainTemplate,
-		"go.mod":             goModTemplate,
-		"Makefile":           makefileTemplate,
-		"template.yaml":      templateYamlTemplate,
-		"Dockerfile":         dockerfileTemplate,
-		"docker-compose.yml": dockerComposeTemplate,
+		"main.go":       mainTmpl,
+		"go.mod":        goModTmpl,
+		"Makefile":      makefileTemplate,
+		"template.yaml": templateYamlTemplate,
+		"Dockerfile":    dockerfileTemplate,
+	}
+
+	if dockerComposeTmpl != "" {
+		files["docker-compose.yml"] = dockerComposeTmpl
 	}
 
 	for filename, tmpl := range files {
@@ -55,8 +96,8 @@ func (g *ProjectGenerator) Generate() error {
 	// Generate internal package files
 	internalFiles := map[string]string{
 		"internal/controller/user_controller.go": userControllerTemplate,
-		"internal/model/user.go":                 userModelTemplate,
-		"internal/repository/user_repository.go": userRepositoryTemplate,
+		"internal/model/user.go":                 userModelTmpl,
+		"internal/repository/user_repository.go": userRepoTmpl,
 		"internal/service/user_service.go":       userServiceTemplate,
 	}
 
