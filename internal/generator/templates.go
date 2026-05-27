@@ -1,124 +1,5 @@
 package generator
 
-const mainTemplate = `package main
-
-import (
-	"github.com/klass-lk/ginboot"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"{{.ModuleName}}/internal/controller"
-	"{{.ModuleName}}/internal/repository"
-	"github.com/klass-lk/ginboot"
-	"log"
-	"os"
-)
-
-func main() {
-	// Initialize MongoDB client
-	client, err := mongo.Connect(nil, options.Client().ApplyURI("mongodb://localhost:27017"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer client.Disconnect(nil)
-
-	database := client.Database(os.Getenv("DB_NAME"))
-
-	// Initialize repositories
-	userRepo := repository.NewUserRepository(database)
-
-	// Initialize controllers
-	userController := controller.NewUserController(userRepo)
-
-	// Initialize Ginboot app
-	app := ginboot.New()
-
-	// API routes
-	api := app.Group("/api/v1")
-	
-	// Public routes
-	userGroup := api.Group("/users")
-	userController.Register(userGroup)
-
-	// Start server
-	if err := app.Start(8080); err != nil {
-		log.Fatal(err)
-	}
-}`
-
-const goModTemplate = `module {{ .ModuleName }}
-
-go 1.21
-
-require (
-	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.0.13
-	go.mongodb.org/mongo-driver v1.13.1
-)`
-
-const userModelTemplate = `package model
-
-type User struct {
-	ID       string ` + "`" + `json:"id"` + "`" + `
-	Username string ` + "`" + `json:"username"` + "`" + `
-	Email    string ` + "`" + `json:"email"` + "`" + `
-}
-
-func (u User) GetID() string {
-	return u.ID
-}
-
-func (u User) GetCollectionName() string {
-	return "users"
-}`
-
-const userRepositoryTemplate = `package repository
-
-import (
-	"{{ .ModuleName }}/internal/model"
-	"github.com/klass-lk/ginboot"
-	"go.mongodb.org/mongo-driver/mongo"
-)
-
-type UserRepository struct {
-	*ginboot.MongoRepository[model.User]
-}
-
-func NewUserRepository(database *mongo.Database) *UserRepository {
-	return &UserRepository{
-		MongoRepository: ginboot.NewMongoRepository[model.User](database),
-	}
-}`
-
-const userServiceTemplate = `package service
-
-import (
-	"{{ .ModuleName }}/internal/model"
-	"{{ .ModuleName }}/internal/repository"
-)
-
-type UserService interface {
-	GetUser(id string) (model.User, error)
-	CreateUser(user model.User) error
-}
-
-type userService struct {
-	userRepo *repository.UserRepository
-}
-
-func NewUserService(userRepo *repository.UserRepository) UserService {
-	return &userService{
-		userRepo: userRepo,
-	}
-}
-
-func (s *userService) GetUser(id string) (model.User, error) {
-	return s.userRepo.FindById(id)
-}
-
-func (s *userService) CreateUser(user model.User) error {
-	return s.userRepo.Save(user)
-}`
-
 const userControllerTemplate = `package controller
 
 import (
@@ -176,6 +57,36 @@ func (c *UserController) CreateUser(ctx *ginboot.Context) {
 	}
 
 	ctx.JSON(201, user)
+}`
+
+const userServiceTemplate = `package service
+
+import (
+	"{{ .ModuleName }}/internal/model"
+	"{{ .ModuleName }}/internal/repository"
+)
+
+type UserService interface {
+	GetUser(id string) (model.User, error)
+	CreateUser(user model.User) error
+}
+
+type userService struct {
+	userRepo *repository.UserRepository
+}
+
+func NewUserService(userRepo *repository.UserRepository) UserService {
+	return &userService{
+		userRepo: userRepo,
+	}
+}
+
+func (s *userService) GetUser(id string) (model.User, error) {
+	return s.userRepo.FindById(id)
+}
+
+func (s *userService) CreateUser(user model.User) error {
+	return s.userRepo.Save(user)
 }`
 
 const makefileTemplate = `.PHONY: build clean build-{{ .ProjectName }}Function
@@ -271,7 +182,66 @@ EXPOSE 8080
 CMD ["./main"]
 `
 
-const dockerComposeTemplate = `version: '3.8'
+// =============================================================================
+// MongoDB Templates
+// =============================================================================
+
+const mainMongoTemplate = `package main
+
+import (
+	"log"
+	"os"
+
+	"github.com/klass-lk/ginboot"
+	"github.com/klass-lk/ginboot/db/mongo"
+	"{{.ModuleName}}/internal/controller"
+	"{{.ModuleName}}/internal/repository"
+)
+
+func main() {
+	// Initialize MongoDB config and client
+	config := mongo.NewMongoConfig().
+		WithHost("localhost", 27017).
+		WithDatabase(os.Getenv("DB_NAME"))
+	db, err := config.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Initialize repositories
+	userRepo := repository.NewUserRepository(db)
+
+	// Initialize controllers
+	userController := controller.NewUserController(userRepo)
+
+	// Initialize Ginboot app
+	app := ginboot.New()
+
+	// API routes
+	api := app.Group("/api/v1")
+	
+	// Public routes
+	userGroup := api.Group("/users")
+	userController.Register(userGroup)
+
+	// Start server
+	if err := app.Start(8080); err != nil {
+		log.Fatal(err)
+	}
+}`
+
+const goModMongoTemplate = `module {{ .ModuleName }}
+
+go 1.21
+
+require (
+	github.com/gin-gonic/gin v1.10.0
+	github.com/klass-lk/ginboot v1.0.13
+	github.com/klass-lk/ginboot/db/mongo v1.0.13
+	go.mongodb.org/mongo-driver v1.17.1
+)`
+
+const dockerComposeMongoTemplate = `version: '3.8'
 
 services:
   app:
@@ -300,5 +270,490 @@ volumes:
 
 networks:
   {{.ProjectName}}-network:
-    driver: bridge
+    driver: bridge`
+
+const userModelMongoTemplate = `package model
+
+type User struct {
+	ID       string ` + "`" + `json:"id" bson:"_id" ginboot:"id"` + "`" + `
+	Username string ` + "`" + `json:"username" bson:"username"` + "`" + `
+	Email    string ` + "`" + `json:"email" bson:"email"` + "`" + `
+}
+
+func (u User) GetID() string {
+	return u.ID
+}
+
+func (u User) GetCollectionName() string {
+	return "users"
+}`
+
+const userRepositoryMongoTemplate = `package repository
+
+import (
+	"{{ .ModuleName }}/internal/model"
+	"github.com/klass-lk/ginboot/db/mongo"
+	mongoDriver "go.mongodb.org/mongo-driver/mongo"
+)
+
+type UserRepository struct {
+	*mongo.MongoRepository[model.User]
+}
+
+func NewUserRepository(database *mongoDriver.Database) *UserRepository {
+	return &UserRepository{
+		MongoRepository: mongo.NewMongoRepository[model.User](database, "users"),
+	}
+}`
+
+// =============================================================================
+// SQL Templates (PostgreSQL & MySQL)
+// =============================================================================
+
+const mainPostgresTemplate = `package main
+
+import (
+	"log"
+	"os"
+
+	"github.com/klass-lk/ginboot"
+	"github.com/klass-lk/ginboot/db/sql"
+	"{{.ModuleName}}/internal/controller"
+	"{{.ModuleName}}/internal/repository"
+	_ "github.com/lib/pq"
+)
+
+func main() {
+	// Initialize SQL config and client
+	config := sql.NewSQLConfig().
+		WithDriver("postgres").
+		WithHost("localhost", 5432).
+		WithCredentials("postgres", "postgres").
+		WithDatabase(os.Getenv("DB_NAME"))
+	db, err := config.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Initialize repositories
+	userRepo := repository.NewUserRepository(db)
+
+	// Initialize controllers
+	userController := controller.NewUserController(userRepo)
+
+	// Initialize Ginboot app
+	app := ginboot.New()
+
+	// API routes
+	api := app.Group("/api/v1")
+	
+	// Public routes
+	userGroup := api.Group("/users")
+	userController.Register(userGroup)
+
+	// Start server
+	if err := app.Start(8080); err != nil {
+		log.Fatal(err)
+	}
+}`
+
+const mainMysqlTemplate = `package main
+
+import (
+	"log"
+	"os"
+
+	"github.com/klass-lk/ginboot"
+	"github.com/klass-lk/ginboot/db/sql"
+	"{{.ModuleName}}/internal/controller"
+	"{{.ModuleName}}/internal/repository"
+	_ "github.com/go-sql-driver/mysql"
+)
+
+func main() {
+	// Initialize SQL config and client
+	config := sql.NewSQLConfig().
+		WithDriver("mysql").
+		WithHost("localhost", 3306).
+		WithCredentials("root", "root").
+		WithDatabase(os.Getenv("DB_NAME"))
+	db, err := config.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Initialize repositories
+	userRepo := repository.NewUserRepository(db)
+
+	// Initialize controllers
+	userController := controller.NewUserController(userRepo)
+
+	// Initialize Ginboot app
+	app := ginboot.New()
+
+	// API routes
+	api := app.Group("/api/v1")
+	
+	// Public routes
+	userGroup := api.Group("/users")
+	userController.Register(userGroup)
+
+	// Start server
+	if err := app.Start(8080); err != nil {
+		log.Fatal(err)
+	}
+}`
+
+const goModPostgresTemplate = `module {{ .ModuleName }}
+
+go 1.21
+
+require (
+	github.com/gin-gonic/gin v1.10.0
+	github.com/klass-lk/ginboot v1.0.13
+	github.com/klass-lk/ginboot/db/sql v1.0.13
+	github.com/lib/pq v1.10.9
+)`
+
+const goModMysqlTemplate = `module {{ .ModuleName }}
+
+go 1.21
+
+require (
+	github.com/gin-gonic/gin v1.10.0
+	github.com/klass-lk/ginboot v1.0.13
+	github.com/klass-lk/ginboot/db/sql v1.0.13
+	github.com/go-sql-driver/mysql v1.8.1
+)`
+
+const dockerComposePostgresTemplate = `version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_NAME={{.ProjectName}}
+    depends_on:
+      - postgres
+    networks:
+      - {{.ProjectName}}-network
+
+  postgres:
+    image: postgres:13-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB={{.ProjectName}}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - {{.ProjectName}}-network
+
+volumes:
+  postgres_data:
+
+networks:
+  {{.ProjectName}}-network:
+    driver: bridge`
+
+const dockerComposeMysqlTemplate = `version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_NAME={{.ProjectName}}
+    depends_on:
+      - mysql
+    networks:
+      - {{.ProjectName}}-network
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE={{.ProjectName}}
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - {{.ProjectName}}-network
+
+volumes:
+  mysql_data:
+
+networks:
+  {{.ProjectName}}-network:
+    driver: bridge`
+
+const userModelPostgresTemplate = `package model
+
+type User struct {
+	ID       string ` + "`" + `json:"id" db:"id" ginboot:"id"` + "`" + `
+	Username string ` + "`" + `json:"username" db:"username"` + "`" + `
+	Email    string ` + "`" + `json:"email" db:"email"` + "`" + `
+}
+
+func (u User) GetTableName() string {
+	return "users"
+}`
+
+const userModelMysqlTemplate = userModelPostgresTemplate
+
+const userRepositoryPostgresTemplate = `package repository
+
+import (
+	"database/sql"
+	"{{ .ModuleName }}/internal/model"
+	dbSql "github.com/klass-lk/ginboot/db/sql"
+)
+
+type UserRepository struct {
+	*dbSql.SQLRepository[model.User]
+}
+
+func NewUserRepository(db *sql.DB) *UserRepository {
+	repo := &UserRepository{
+		SQLRepository: dbSql.NewSQLRepository[model.User](db),
+	}
+	_ = repo.CreateTable()
+	return repo
+}`
+
+const userRepositoryMysqlTemplate = userRepositoryPostgresTemplate
+
+// =============================================================================
+// DynamoDB Templates
+// =============================================================================
+
+const mainDynamodbTemplate = `package main
+
+import (
+	"log"
+
+	"github.com/klass-lk/ginboot"
+	"github.com/klass-lk/ginboot/db/dynamodb"
+	"{{.ModuleName}}/internal/controller"
+	"{{.ModuleName}}/internal/repository"
+)
+
+func main() {
+	// Initialize DynamoDB Config
+	dynamodb.NewDynamoDBConfig().
+		WithTableName("{{.ProjectName}}-table").
+		WithSkipTableCreation(false)
+
+	// Initialize DynamoDB Client
+	client, err := dynamodb.NewDynamoDBClient("us-east-1")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Initialize repositories
+	userRepo := repository.NewUserRepository(client)
+
+	// Initialize controllers
+	userController := controller.NewUserController(userRepo)
+
+	// Initialize Ginboot app
+	app := ginboot.New()
+
+	// API routes
+	api := app.Group("/api/v1")
+	
+	// Public routes
+	userGroup := api.Group("/users")
+	userController.Register(userGroup)
+
+	// Start server
+	if err := app.Start(8080); err != nil {
+		log.Fatal(err)
+	}
+}`
+
+const goModDynamodbTemplate = `module {{ .ModuleName }}
+
+go 1.21
+
+require (
+	github.com/aws/aws-sdk-go-v2 v1.40.1
+	github.com/aws/aws-sdk-go-v2/config v1.28.5
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.50.3
+	github.com/gin-gonic/gin v1.10.0
+	github.com/klass-lk/ginboot v1.0.13
+	github.com/klass-lk/ginboot/db/dynamodb v1.0.13
+)`
+
+const dockerComposeDynamodbTemplate = `version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+      - AWS_REGION=us-east-1
+    depends_on:
+      - dynamodb-local
+    networks:
+      - {{.ProjectName}}-network
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ."
+    volumes:
+      - dynamodb_data:/home/dynamodblocal/data
+    networks:
+      - {{.ProjectName}}-network
+
+volumes:
+  dynamodb_data:
+
+networks:
+  {{.ProjectName}}-network:
+    driver: bridge`
+
+const userModelDynamodbTemplate = `package model
+
+type User struct {
+	ID       string ` + "`" + `json:"id" ginboot:"id" dynamodbav:"id"` + "`" + `
+	Username string ` + "`" + `json:"username" dynamodbav:"username"` + "`" + `
+	Email    string ` + "`" + `json:"email" dynamodbav:"email"` + "`" + `
+}`
+
+const userRepositoryDynamodbTemplate = `package repository
+
+import (
+	"{{ .ModuleName }}/internal/model"
+	"github.com/klass-lk/ginboot/db/dynamodb"
+)
+
+type UserRepository struct {
+	*dynamodb.DynamoDBRepository[model.User]
+}
+
+func NewUserRepository(client dynamodb.DynamoDBAPI) *UserRepository {
+	return &UserRepository{
+		DynamoDBRepository: dynamodb.NewDynamoDBRepository[model.User](client),
+	}
+}
+
+func (r *UserRepository) FindById(id string) (model.User, error) {
+	return r.DynamoDBRepository.FindById(id, "USER")
+}
+
+func (r *UserRepository) Save(user model.User) error {
+	return r.DynamoDBRepository.Save(user, "USER")
+}`
+
+// =============================================================================
+// None (In-Memory) Templates
+// =============================================================================
+
+const mainNoneTemplate = `package main
+
+import (
+	"log"
+
+	"github.com/klass-lk/ginboot"
+	"{{.ModuleName}}/internal/controller"
+	"{{.ModuleName}}/internal/repository"
+)
+
+func main() {
+	// Initialize repositories (In-Memory)
+	userRepo := repository.NewUserRepository()
+
+	// Initialize controllers
+	userController := controller.NewUserController(userRepo)
+
+	// Initialize Ginboot app
+	app := ginboot.New()
+
+	// API routes
+	api := app.Group("/api/v1")
+	
+	// Public routes
+	userGroup := api.Group("/users")
+	userController.Register(userGroup)
+
+	// Start server
+	if err := app.Start(8080); err != nil {
+		log.Fatal(err)
+	}
+}`
+
+const goModNoneTemplate = `module {{ .ModuleName }}
+
+go 1.21
+
+require (
+	github.com/gin-gonic/gin v1.10.0
+	github.com/klass-lk/ginboot v1.0.13
+)`
+
+const dockerComposeNoneTemplate = `version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
 `
+
+const userModelNoneTemplate = `package model
+
+type User struct {
+	ID       string ` + "`" + `json:"id"` + "`" + `
+	Username string ` + "`" + `json:"username"` + "`" + `
+	Email    string ` + "`" + `json:"email"` + "`" + `
+}`
+
+const userRepositoryNoneTemplate = `package repository
+
+import (
+	"errors"
+	"sync"
+	"{{ .ModuleName }}/internal/model"
+)
+
+type UserRepository struct {
+	mu    sync.RWMutex
+	users map[string]model.User
+}
+
+func NewUserRepository() *UserRepository {
+	return &UserRepository{
+		users: make(map[string]model.User),
+	}
+}
+
+func (r *UserRepository) FindById(id string) (model.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	user, ok := r.users[id]
+	if !ok {
+		return model.User{}, errors.New("user not found")
+	}
+	return user, nil
+}
+
+func (r *UserRepository) Save(user model.User) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.users[user.ID] = user
+	return nil
+}`
