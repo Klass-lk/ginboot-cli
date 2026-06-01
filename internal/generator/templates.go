@@ -191,9 +191,12 @@ const mainMongoTemplate = `package main
 import (
 	"log"
 	"os"
+	{{ if .HasS3 }}"context"{{ end }}
 
 	"github.com/klass-lk/ginboot"
 	"github.com/klass-lk/ginboot/db/mongo"
+	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
+	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
 	"{{.ModuleName}}/internal/controller"
 	"{{.ModuleName}}/internal/repository"
 )
@@ -217,6 +220,27 @@ func main() {
 	// Initialize Ginboot app
 	app := ginboot.New()
 
+	{{ if .HasS3 }}
+	// Initialize file service (AWS S3)
+	fileService := s3.NewS3FileService(
+		context.Background(),
+		os.Getenv("S3_BUCKET"),
+		"./local",
+		os.Getenv("AWS_ACCESS_KEY_ID"),
+		os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		os.Getenv("AWS_REGION"),
+		"3600",
+	)
+	app.BindFileService(fileService)
+	{{ end }}
+
+	{{ if .HasLambda }}
+	// Initialize Lambda runner if running on AWS Lambda
+	if os.Getenv("LAMBDA_TASK_ROOT") != "" {
+		app.SetRunner(lambda.NewRunner())
+	}
+	{{ end }}
+
 	// API routes
 	api := app.Group("/api/v1")
 	
@@ -232,13 +256,15 @@ func main() {
 
 const goModMongoTemplate = `module {{ .ModuleName }}
 
-go 1.21
+go 1.25.0
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.10.0
-	github.com/klass-lk/ginboot/db/mongo v1.10.0
+	github.com/klass-lk/ginboot v1.11.0
+	github.com/klass-lk/ginboot/db/mongo v1.11.0
 	go.mongodb.org/mongo-driver v1.17.1
+	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 v1.11.0{{ end }}
+	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda v1.11.0{{ end }}
 )`
 
 const dockerComposeMongoTemplate = `version: '3.8'
@@ -315,9 +341,12 @@ const mainPostgresTemplate = `package main
 import (
 	"log"
 	"os"
+	{{ if .HasS3 }}"context"{{ end }}
 
 	"github.com/klass-lk/ginboot"
 	"github.com/klass-lk/ginboot/db/sql"
+	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
+	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
 	"{{.ModuleName}}/internal/controller"
 	"{{.ModuleName}}/internal/repository"
 	_ "github.com/lib/pq"
@@ -345,6 +374,27 @@ func main() {
 	// Initialize Ginboot app
 	app := ginboot.New()
 
+	{{ if .HasS3 }}
+	// Initialize file service (AWS S3)
+	fileService := s3.NewS3FileService(
+		context.Background(),
+		os.Getenv("S3_BUCKET"),
+		"./local",
+		os.Getenv("AWS_ACCESS_KEY_ID"),
+		os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		os.Getenv("AWS_REGION"),
+		"3600",
+	)
+	app.BindFileService(fileService)
+	{{ end }}
+
+	{{ if .HasLambda }}
+	// Initialize Lambda runner if running on AWS Lambda
+	if os.Getenv("LAMBDA_TASK_ROOT") != "" {
+		app.SetRunner(lambda.NewRunner())
+	}
+	{{ end }}
+
 	// API routes
 	api := app.Group("/api/v1")
 	
@@ -363,9 +413,12 @@ const mainMysqlTemplate = `package main
 import (
 	"log"
 	"os"
+	{{ if .HasS3 }}"context"{{ end }}
 
 	"github.com/klass-lk/ginboot"
 	"github.com/klass-lk/ginboot/db/sql"
+	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
+	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
 	"{{.ModuleName}}/internal/controller"
 	"{{.ModuleName}}/internal/repository"
 	_ "github.com/go-sql-driver/mysql"
@@ -393,6 +446,27 @@ func main() {
 	// Initialize Ginboot app
 	app := ginboot.New()
 
+	{{ if .HasS3 }}
+	// Initialize file service (AWS S3)
+	fileService := s3.NewS3FileService(
+		context.Background(),
+		os.Getenv("S3_BUCKET"),
+		"./local",
+		os.Getenv("AWS_ACCESS_KEY_ID"),
+		os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		os.Getenv("AWS_REGION"),
+		"3600",
+	)
+	app.BindFileService(fileService)
+	{{ end }}
+
+	{{ if .HasLambda }}
+	// Initialize Lambda runner if running on AWS Lambda
+	if os.Getenv("LAMBDA_TASK_ROOT") != "" {
+		app.SetRunner(lambda.NewRunner())
+	}
+	{{ end }}
+
 	// API routes
 	api := app.Group("/api/v1")
 	
@@ -408,24 +482,28 @@ func main() {
 
 const goModPostgresTemplate = `module {{ .ModuleName }}
 
-go 1.21
+go 1.25.0
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.10.0
-	github.com/klass-lk/ginboot/db/sql v1.10.0
+	github.com/klass-lk/ginboot v1.11.0
+	github.com/klass-lk/ginboot/db/sql v1.11.0
 	github.com/lib/pq v1.10.9
+	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 v1.11.0{{ end }}
+	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda v1.11.0{{ end }}
 )`
 
 const goModMysqlTemplate = `module {{ .ModuleName }}
 
-go 1.21
+go 1.25.0
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.10.0
-	github.com/klass-lk/ginboot/db/sql v1.10.0
+	github.com/klass-lk/ginboot v1.11.0
+	github.com/klass-lk/ginboot/db/sql v1.11.0
 	github.com/go-sql-driver/mysql v1.8.1
+	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 v1.11.0{{ end }}
+	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda v1.11.0{{ end }}
 )`
 
 const dockerComposePostgresTemplate = `version: '3.8'
@@ -539,9 +617,13 @@ const mainDynamodbTemplate = `package main
 
 import (
 	"log"
+	"os"
+	{{ if .HasS3 }}"context"{{ end }}
 
 	"github.com/klass-lk/ginboot"
 	"github.com/klass-lk/ginboot/db/dynamodb"
+	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
+	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
 	"{{.ModuleName}}/internal/controller"
 	"{{.ModuleName}}/internal/repository"
 )
@@ -567,6 +649,27 @@ func main() {
 	// Initialize Ginboot app
 	app := ginboot.New()
 
+	{{ if .HasS3 }}
+	// Initialize file service (AWS S3)
+	fileService := s3.NewS3FileService(
+		context.Background(),
+		os.Getenv("S3_BUCKET"),
+		"./local",
+		os.Getenv("AWS_ACCESS_KEY_ID"),
+		os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		os.Getenv("AWS_REGION"),
+		"3600",
+	)
+	app.BindFileService(fileService)
+	{{ end }}
+
+	{{ if .HasLambda }}
+	// Initialize Lambda runner if running on AWS Lambda
+	if os.Getenv("LAMBDA_TASK_ROOT") != "" {
+		app.SetRunner(lambda.NewRunner())
+	}
+	{{ end }}
+
 	// API routes
 	api := app.Group("/api/v1")
 	
@@ -582,15 +685,17 @@ func main() {
 
 const goModDynamodbTemplate = `module {{ .ModuleName }}
 
-go 1.21
+go 1.25.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.40.1
 	github.com/aws/aws-sdk-go-v2/config v1.28.5
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.50.3
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.10.0
-	github.com/klass-lk/ginboot/db/dynamodb v1.10.0
+	github.com/klass-lk/ginboot v1.11.0
+	github.com/klass-lk/ginboot/db/dynamodb v1.11.0
+	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 v1.11.0{{ end }}
+	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda v1.11.0{{ end }}
 )`
 
 const dockerComposeDynamodbTemplate = `version: '3.8'
@@ -667,8 +772,12 @@ const mainNoneTemplate = `package main
 
 import (
 	"log"
+	{{ if or .HasLambda .HasS3 }}"os"{{ end }}
+	{{ if .HasS3 }}"context"{{ end }}
 
 	"github.com/klass-lk/ginboot"
+	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
+	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
 	"{{.ModuleName}}/internal/controller"
 	"{{.ModuleName}}/internal/repository"
 )
@@ -682,6 +791,27 @@ func main() {
 
 	// Initialize Ginboot app
 	app := ginboot.New()
+
+	{{ if .HasS3 }}
+	// Initialize file service (AWS S3)
+	fileService := s3.NewS3FileService(
+		context.Background(),
+		os.Getenv("S3_BUCKET"),
+		"./local",
+		os.Getenv("AWS_ACCESS_KEY_ID"),
+		os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		os.Getenv("AWS_REGION"),
+		"3600",
+	)
+	app.BindFileService(fileService)
+	{{ end }}
+
+	{{ if .HasLambda }}
+	// Initialize Lambda runner if running on AWS Lambda
+	if os.Getenv("LAMBDA_TASK_ROOT") != "" {
+		app.SetRunner(lambda.NewRunner())
+	}
+	{{ end }}
 
 	// API routes
 	api := app.Group("/api/v1")
@@ -698,11 +828,13 @@ func main() {
 
 const goModNoneTemplate = `module {{ .ModuleName }}
 
-go 1.21
+go 1.25.0
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.10.0
+	github.com/klass-lk/ginboot v1.11.0
+	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 v1.11.0{{ end }}
+	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda v1.11.0{{ end }}
 )`
 
 const dockerComposeNoneTemplate = `version: '3.8'
