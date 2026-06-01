@@ -11,16 +11,18 @@ type ProjectGenerator struct {
 	ProjectPath  string
 	ProjectName  string
 	ModuleName   string
+	GoVersion    string
 	DatabaseType string
 	StorageType  string
 	DeployType   string
 }
 
-func NewProjectGenerator(projectPath, projectName, moduleName, databaseType, storageType, deployType string) *ProjectGenerator {
+func NewProjectGenerator(projectPath, projectName, moduleName, goVersion, databaseType, storageType, deployType string) *ProjectGenerator {
 	return &ProjectGenerator{
 		ProjectPath:  projectPath,
 		ProjectName:  projectName,
 		ModuleName:   moduleName,
+		GoVersion:    goVersion,
 		DatabaseType: databaseType,
 		StorageType:  storageType,
 		DeployType:   deployType,
@@ -134,11 +136,13 @@ func (g *ProjectGenerator) generateFile(filename, tmplContent string) error {
 	data := struct {
 		ProjectName string
 		ModuleName  string
+		GoVersion   string
 		HasS3       bool
 		HasLambda   bool
 	}{
 		ProjectName: g.ProjectName,
 		ModuleName:  g.ModuleName,
+		GoVersion:   g.GoVersion,
 		HasS3:       g.StorageType == "s3",
 		HasLambda:   g.DeployType == "lambda",
 	}

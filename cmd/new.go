@@ -12,6 +12,7 @@ import (
 var (
 	projectName string
 	moduleName  string
+	goVersion   string
 	dbType      string
 	storageType string
 	deployType  string
@@ -32,6 +33,10 @@ var newCmd = &cobra.Command{
 
 		if moduleName == "" {
 			moduleName = fmt.Sprintf("github.com/%s/%s", os.Getenv("USER"), projectName)
+		}
+
+		if goVersion == "" {
+			goVersion = "1.21"
 		}
 
 		// If any required config is empty, run the Bubble Tea TUI Wizard
@@ -70,7 +75,7 @@ var newCmd = &cobra.Command{
 			return fmt.Errorf("failed to create project directory: %w", err)
 		}
 
-		gen := generator.NewProjectGenerator(projectPath, projectName, moduleName, dbType, storageType, deployType)
+		gen := generator.NewProjectGenerator(projectPath, projectName, moduleName, goVersion, dbType, storageType, deployType)
 		if err := gen.Generate(); err != nil {
 			return fmt.Errorf("failed to generate project: %w", err)
 		}
@@ -98,6 +103,7 @@ func isValidProjectName(name string) bool {
 
 func init() {
 	newCmd.Flags().StringVar(&moduleName, "module", "", "Go module name (default: github.com/username/project-name)")
+	newCmd.Flags().StringVar(&goVersion, "go-version", "", "Go version (default: 1.21)")
 	newCmd.Flags().StringVar(&dbType, "db", "", "Database type: none, mongodb, postgres, mysql, dynamodb")
 	newCmd.Flags().StringVar(&storageType, "storage", "", "Storage type: none, s3")
 	newCmd.Flags().StringVar(&deployType, "deploy", "", "Deployment type: http, lambda")
