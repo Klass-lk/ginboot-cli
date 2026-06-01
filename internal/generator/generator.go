@@ -12,14 +12,18 @@ type ProjectGenerator struct {
 	ProjectName  string
 	ModuleName   string
 	DatabaseType string
+	StorageType  string
+	DeployType   string
 }
 
-func NewProjectGenerator(projectPath, projectName, moduleName, databaseType string) *ProjectGenerator {
+func NewProjectGenerator(projectPath, projectName, moduleName, databaseType, storageType, deployType string) *ProjectGenerator {
 	return &ProjectGenerator{
 		ProjectPath:  projectPath,
 		ProjectName:  projectName,
 		ModuleName:   moduleName,
 		DatabaseType: databaseType,
+		StorageType:  storageType,
+		DeployType:   deployType,
 	}
 }
 
@@ -76,11 +80,14 @@ func (g *ProjectGenerator) Generate() error {
 
 	// Generate files
 	files := map[string]string{
-		"main.go":       mainTmpl,
-		"go.mod":        goModTmpl,
-		"Makefile":      makefileTemplate,
-		"template.yaml": templateYamlTemplate,
-		"Dockerfile":    dockerfileTemplate,
+		"main.go": mainTmpl,
+		"go.mod":  goModTmpl,
+	}
+
+	if g.DeployType == "lambda" {
+		files["Makefile"] = makefileTemplate
+		files["template.yaml"] = templateYamlTemplate
+		files["Dockerfile"] = dockerfileTemplate
 	}
 
 	if dockerComposeTmpl != "" {
@@ -127,9 +134,13 @@ func (g *ProjectGenerator) generateFile(filename, tmplContent string) error {
 	data := struct {
 		ProjectName string
 		ModuleName  string
+		HasS3       bool
+		HasLambda   bool
 	}{
 		ProjectName: g.ProjectName,
 		ModuleName:  g.ModuleName,
+		HasS3:       g.StorageType == "s3",
+		HasLambda:   g.DeployType == "lambda",
 	}
 
 	if err := tmpl.Execute(f, data); err != nil {

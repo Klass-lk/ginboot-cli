@@ -13,6 +13,8 @@ var (
 	projectName string
 	moduleName  string
 	dbType      string
+	storageType string
+	deployType  string
 )
 
 var newCmd = &cobra.Command{
@@ -32,48 +34,34 @@ var newCmd = &cobra.Command{
 			moduleName = fmt.Sprintf("github.com/%s/%s", os.Getenv("USER"), projectName)
 		}
 
-		// Handle database type prompting
-		if dbType == "" {
-			var setupDb string
-			fmt.Print("Do you want to set up a database in this project? (y/n): ")
-			_, err := fmt.Scanln(&setupDb)
-			if err != nil || (setupDb != "y" && setupDb != "yes" && setupDb != "Y" && setupDb != "YES") {
-				dbType = "none"
-			} else {
-				fmt.Println("\nCurrently supported databases:")
-				fmt.Println("  1) MongoDB")
-				fmt.Println("  2) PostgreSQL")
-				fmt.Println("  3) MySQL")
-				fmt.Println("  4) DynamoDB")
-				for {
-					var choice int
-					fmt.Print("Select a database (1-4): ")
-					_, err := fmt.Scanln(&choice)
-					if err != nil || choice < 1 || choice > 4 {
-						fmt.Println("Invalid selection. Please enter a number between 1 and 4.")
-						// Clear standard input if needed or handle retry
-						continue
-					}
-					switch choice {
-					case 1:
-						dbType = "mongodb"
-					case 2:
-						dbType = "postgres"
-					case 3:
-						dbType = "mysql"
-					case 4:
-						dbType = "dynamodb"
-					}
-					break
-				}
+		// If any required config is empty, run the Bubble Tea TUI Wizard
+		if dbType == "" || storageType == "" || deployType == "" {
+			var err error
+			dbType, storageType, deployType, err = runWizard()
+			if err != nil {
+				return err
 			}
 		} else {
-			// Validate flag
+			// Validate flags
 			switch dbType {
 			case "none", "mongodb", "postgres", "mysql", "dynamodb":
 				// valid
 			default:
 				return fmt.Errorf("invalid database type '%s': must be one of none, mongodb, postgres, mysql, dynamodb", dbType)
+			}
+
+			switch storageType {
+			case "none", "s3":
+				// valid
+			default:
+				return fmt.Errorf("invalid storage type '%s': must be one of none, s3", storageType)
+			}
+
+			switch deployType {
+			case "http", "lambda":
+				// valid
+			default:
+				return fmt.Errorf("invalid deployment type '%s': must be one of http, lambda", deployType)
 			}
 		}
 
@@ -82,17 +70,21 @@ var newCmd = &cobra.Command{
 			return fmt.Errorf("failed to create project directory: %w", err)
 		}
 
-		gen := generator.NewProjectGenerator(projectPath, projectName, moduleName, dbType)
+		gen := generator.NewProjectGenerator(projectPath, projectName, moduleName, dbType, storageType, deployType)
 		if err := gen.Generate(); err != nil {
 			return fmt.Errorf("failed to generate project: %w", err)
 		}
 
-		fmt.Printf("Successfully created project '%s' at %s (Database: %s)\n", projectName, projectPath, dbType)
+		fmt.Printf("Successfully created project '%s' at %s (Database: %s, Storage: %s, Deploy: %s)\n", projectName, projectPath, dbType, storageType, deployType)
 		fmt.Println("\nNext steps:")
 		fmt.Printf("  cd %s\n", projectName)
 		fmt.Println("  go mod tidy")
-		fmt.Println("  ginboot build")
-		fmt.Println("  ginboot deploy")
+		if deployType == "lambda" {
+			fmt.Println("  ginboot build")
+			fmt.Println("  ginboot deploy")
+		} else {
+			fmt.Println("  go run main.go")
+		}
 
 		return nil
 	},
@@ -107,4 +99,6 @@ func isValidProjectName(name string) bool {
 func init() {
 	newCmd.Flags().StringVar(&moduleName, "module", "", "Go module name (default: github.com/username/project-name)")
 	newCmd.Flags().StringVar(&dbType, "db", "", "Database type: none, mongodb, postgres, mysql, dynamodb")
+	newCmd.Flags().StringVar(&storageType, "storage", "", "Storage type: none, s3")
+	newCmd.Flags().StringVar(&deployType, "deploy", "", "Deployment type: http, lambda")
 }
