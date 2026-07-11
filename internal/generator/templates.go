@@ -151,7 +151,7 @@ Outputs:
       Fn::Sub: https://${{"{"}}{{ .ProjectName }}API}.execute-api.${AWS::Region}.amazonaws.com/prod`
 
 const dockerfileTemplate = `# Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:{{ .GoVersion }}-alpine AS builder
 
 WORKDIR /app
 
@@ -256,7 +256,7 @@ func main() {
 
 const goModMongoTemplate = `module {{ .ModuleName }}
 
-go 1.25.0
+go {{ .GoVersion }}
 
 require (
 	github.com/gin-gonic/gin v1.10.0
@@ -482,7 +482,7 @@ func main() {
 
 const goModPostgresTemplate = `module {{ .ModuleName }}
 
-go 1.25.0
+go {{ .GoVersion }}
 
 require (
 	github.com/gin-gonic/gin v1.10.0
@@ -495,7 +495,7 @@ require (
 
 const goModMysqlTemplate = `module {{ .ModuleName }}
 
-go 1.25.0
+go {{ .GoVersion }}
 
 require (
 	github.com/gin-gonic/gin v1.10.0
@@ -685,7 +685,7 @@ func main() {
 
 const goModDynamodbTemplate = `module {{ .ModuleName }}
 
-go 1.25.0
+go {{ .GoVersion }}
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.40.1
