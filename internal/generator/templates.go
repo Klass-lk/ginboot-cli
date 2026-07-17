@@ -4,18 +4,17 @@ const userControllerTemplate = `package controller
 
 import (
 	"{{.ModuleName}}/internal/model"
-	"{{.ModuleName}}/internal/repository"
-	"github.com/gin-gonic/gin"
+	"{{.ModuleName}}/internal/service"
 	"github.com/klass-lk/ginboot"
 )
 
 type UserController struct {
-	userRepo *repository.UserRepository
+	userService service.UserService
 }
 
-func NewUserController(userRepo *repository.UserRepository) *UserController {
+func NewUserController(userService *service.UserService) *UserController {
 	return &UserController{
-		userRepo: userRepo,
+		userService: *userService,
 	}
 }
 
@@ -24,58 +23,57 @@ func (c *UserController) Register(group *ginboot.ControllerGroup) {
 	group.POST("", c.CreateUser)
 }
 
-func (c *UserController) GetUser(ctx *ginboot.Context) {
-	id := ctx.Param("id")
+func (c *UserController) GetUser(ctx *ginboot.Context) (model.User, error) {
+	//id := ctx.Param("id")
 
 	// Example of using auth context
 	authCtx, err := ctx.GetAuthContext()
 	if err != nil {
-		return
+		return model.User{}, err
 	}
 	// Use auth context data if needed
 	_ = authCtx.UserID
 
-	user, err := c.userRepo.FindById(id)
+	user, err := c.userService.GetUser(authCtx.UserID)
 	if err != nil {
-		ctx.JSON(404, gin.H{"error": "User not found"})
-		return
+		return model.User{}, err
 	}
-
-	ctx.JSON(200, user)
+	return user, nil
 }
 
-func (c *UserController) CreateUser(ctx *ginboot.Context) {
-	var user model.User
-	if err := ctx.ShouldBindJSON(&user); err != nil {
-		ctx.JSON(400, gin.H{"error": err.Error()})
-		return
+func (c *UserController) CreateUser(ctx *ginboot.Context, request model.User) (model.User, error) {
+	user, err := c.userService.CreateUser(request)
+	if err != nil {
+		return model.User{}, err
 	}
-
-	if err := c.userRepo.Save(user); err != nil {
-		ctx.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-
-	ctx.JSON(201, user)
+	return user, nil
 }`
 
 const userServiceTemplate = `package service
 
 import (
 	"{{ .ModuleName }}/internal/model"
+	{{ if eq .DatabaseType "none" }}
+	"github.com/klass-lk/ginboot/db/inmemory"
+	{{ else }}
 	"{{ .ModuleName }}/internal/repository"
+	{{ end }}
 )
 
 type UserService interface {
 	GetUser(id string) (model.User, error)
-	CreateUser(user model.User) error
+	CreateUser(user model.User) (model.User, error)
 }
 
 type userService struct {
+	{{ if eq .DatabaseType "none" }}
+	userRepo *inmemory.InMemoryRepository[model.User]
+	{{ else }}
 	userRepo *repository.UserRepository
+	{{ end }}
 }
 
-func NewUserService(userRepo *repository.UserRepository) UserService {
+func NewUserService({{ if eq .DatabaseType "none" }}userRepo *inmemory.InMemoryRepository[model.User]{{ else }}userRepo *repository.UserRepository{{ end }}) UserService {
 	return &userService{
 		userRepo: userRepo,
 	}
@@ -85,8 +83,9 @@ func (s *userService) GetUser(id string) (model.User, error) {
 	return s.userRepo.FindById(id)
 }
 
-func (s *userService) CreateUser(user model.User) error {
-	return s.userRepo.Save(user)
+func (s *userService) CreateUser(user model.User) (model.User, error) {
+	err := s.userRepo.Save(user)
+	return user, err
 }`
 
 const makefileTemplate = `.PHONY: build clean build-{{ .ProjectName }}Function
@@ -260,11 +259,11 @@ go {{ .GoVersion }}
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.11.0
-	github.com/klass-lk/ginboot/db/mongo v1.11.0
+	github.com/klass-lk/ginboot {{ .GinbootVersion }}
+	github.com/klass-lk/ginboot/db/mongo {{ .GinbootVersion }}
 	go.mongodb.org/mongo-driver v1.17.1
-	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 v1.11.0{{ end }}
-	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda v1.11.0{{ end }}
+	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 {{ .GinbootVersion }}{{ end }}
+	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda {{ .GinbootVersion }}{{ end }}
 )`
 
 const dockerComposeMongoTemplate = `version: '3.8'
@@ -486,11 +485,11 @@ go {{ .GoVersion }}
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.11.0
-	github.com/klass-lk/ginboot/db/sql v1.11.0
+	github.com/klass-lk/ginboot {{ .GinbootVersion }}
+	github.com/klass-lk/ginboot/db/sql {{ .GinbootVersion }}
 	github.com/lib/pq v1.10.9
-	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 v1.11.0{{ end }}
-	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda v1.11.0{{ end }}
+	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 {{ .GinbootVersion }}{{ end }}
+	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda {{ .GinbootVersion }}{{ end }}
 )`
 
 const goModMysqlTemplate = `module {{ .ModuleName }}
@@ -499,11 +498,11 @@ go {{ .GoVersion }}
 
 require (
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.11.0
-	github.com/klass-lk/ginboot/db/sql v1.11.0
+	github.com/klass-lk/ginboot {{ .GinbootVersion }}
+	github.com/klass-lk/ginboot/db/sql {{ .GinbootVersion }}
 	github.com/go-sql-driver/mysql v1.8.1
-	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 v1.11.0{{ end }}
-	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda v1.11.0{{ end }}
+	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 {{ .GinbootVersion }}{{ end }}
+	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda {{ .GinbootVersion }}{{ end }}
 )`
 
 const dockerComposePostgresTemplate = `version: '3.8'
@@ -692,10 +691,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.28.5
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.50.3
 	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.11.0
-	github.com/klass-lk/ginboot/db/dynamodb v1.11.0
-	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 v1.11.0{{ end }}
-	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda v1.11.0{{ end }}
+	github.com/klass-lk/ginboot {{ .GinbootVersion }}
+	github.com/klass-lk/ginboot/db/dynamodb {{ .GinbootVersion }}
+	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 {{ .GinbootVersion }}{{ end }}
+	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda {{ .GinbootVersion }}{{ end }}
 )`
 
 const dockerComposeDynamodbTemplate = `version: '3.8'
@@ -772,39 +771,16 @@ const mainNoneTemplate = `package main
 
 import (
 	"log"
-	{{ if or .HasLambda .HasS3 }}"os"{{ end }}
-	{{ if .HasS3 }}"context"{{ end }}
+	{{ if .HasLambda }}"os"{{ end }}
 
+	"{{.ModuleName}}/internal/di"
 	"github.com/klass-lk/ginboot"
 	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
-	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
-	"{{.ModuleName}}/internal/controller"
-	"{{.ModuleName}}/internal/repository"
 )
 
 func main() {
-	// Initialize repositories (In-Memory)
-	userRepo := repository.NewUserRepository()
-
-	// Initialize controllers
-	userController := controller.NewUserController(userRepo)
-
 	// Initialize Ginboot app
 	app := ginboot.New()
-
-	{{ if .HasS3 }}
-	// Initialize file service (AWS S3)
-	fileService := s3.NewS3FileService(
-		context.Background(),
-		os.Getenv("S3_BUCKET"),
-		"./local",
-		os.Getenv("AWS_ACCESS_KEY_ID"),
-		os.Getenv("AWS_SECRET_ACCESS_KEY"),
-		os.Getenv("AWS_REGION"),
-		"3600",
-	)
-	app.BindFileService(fileService)
-	{{ end }}
 
 	{{ if .HasLambda }}
 	// Initialize Lambda runner if running on AWS Lambda
@@ -813,12 +789,8 @@ func main() {
 	}
 	{{ end }}
 
-	// API routes
-	api := app.Group("/api/v1")
-	
-	// Public routes
-	userGroup := api.Group("/users")
-	userController.Register(userGroup)
+	app.SetBasePath("/api")
+	di.NewContainer(app)
 
 	// Start server
 	if err := app.Start(8080); err != nil {
@@ -831,10 +803,11 @@ const goModNoneTemplate = `module {{ .ModuleName }}
 go 1.25.0
 
 require (
-	github.com/gin-gonic/gin v1.10.0
-	github.com/klass-lk/ginboot v1.11.0
-	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 v1.11.0{{ end }}
-	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda v1.11.0{{ end }}
+	github.com/gin-gonic/gin v1.12.0
+	github.com/klass-lk/ginboot {{ .GinbootVersion }}
+	github.com/klass-lk/ginboot/db/inmemory {{ .GinbootVersion }}
+	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 {{ .GinbootVersion }}{{ end }}
+	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda {{ .GinbootVersion }}{{ end }}
 )`
 
 const dockerComposeNoneTemplate = `version: '3.8'
@@ -849,43 +822,72 @@ services:
 const userModelNoneTemplate = `package model
 
 type User struct {
-	ID       string ` + "`" + `json:"id"` + "`" + `
+	ID       string ` + "`" + `json:"id" ginboot:"id"` + "`" + `
 	Username string ` + "`" + `json:"username"` + "`" + `
 	Email    string ` + "`" + `json:"email"` + "`" + `
 }`
 
-const userRepositoryNoneTemplate = `package repository
+const diContainerTemplate = `package di
 
 import (
-	"errors"
-	"sync"
-	"{{ .ModuleName }}/internal/model"
+	"{{.ModuleName}}/internal/controller"
+	"{{.ModuleName}}/internal/model"
+	"{{.ModuleName}}/internal/service"
+	{{ if ne .DatabaseType "none" }}"{{.ModuleName}}/internal/repository"{{ end }}
+	"github.com/klass-lk/ginboot"
+	{{ if eq .DatabaseType "none" }}"github.com/klass-lk/ginboot/db/inmemory"{{ end }}
+	{{ if eq .DatabaseType "dynamodb" }}"github.com/klass-lk/ginboot/db/dynamodb"{{ end }}
+	{{ if eq .DatabaseType "mongodb" }}"github.com/klass-lk/ginboot/db/mongo"{{ end }}
 )
 
-type UserRepository struct {
-	mu    sync.RWMutex
-	users map[string]model.User
+type Container struct {
+	Services Services
 }
 
-func NewUserRepository() *UserRepository {
-	return &UserRepository{
-		users: make(map[string]model.User),
+type Services struct {
+	UserService service.UserService
+}
+
+type Repository struct {
+	{{ if eq .DatabaseType "none" }}
+	UserRepository *inmemory.InMemoryRepository[model.User]
+	{{ else }}
+	UserRepository *repository.UserRepository
+	{{ end }}
+}
+
+func NewContainer(engine *ginboot.Server) {
+	repos := InitializeRepositories()
+	services := InitializeServices(repos)
+	InitializeControllers(services, engine)
+}
+
+func InitializeRepositories() *Repository {
+	{{ if eq .DatabaseType "none" }}
+	userRepository := inmemory.NewInMemoryRepository[model.User]()
+	return &Repository{
+		UserRepository: userRepository,
+	}
+	{{ else if eq .DatabaseType "dynamodb" }}
+	// Example initialization for DynamoDB
+	// client := dynamodb.NewClient(...) 
+	// userRepository := repository.NewUserRepository(client)
+	return &Repository{
+		// UserRepository: userRepository,
+	}
+	{{ else }}
+	return &Repository{}
+	{{ end }}
+}
+
+func InitializeServices(repos *Repository) *Services {
+	userService := service.NewUserService(repos.UserRepository)
+	return &Services{
+		UserService: userService,
 	}
 }
 
-func (r *UserRepository) FindById(id string) (model.User, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	user, ok := r.users[id]
-	if !ok {
-		return model.User{}, errors.New("user not found")
-	}
-	return user, nil
-}
-
-func (r *UserRepository) Save(user model.User) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.users[user.ID] = user
-	return nil
+func InitializeControllers(services *Services, engine *ginboot.Server) {
+	userController := controller.NewUserController(&services.UserService)
+	engine.RegisterController("users", userController)
 }`

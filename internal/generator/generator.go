@@ -1,11 +1,42 @@
 package generator
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"text/template"
 )
+
+type GitHubRelease struct {
+	TagName string `json:"tag_name"`
+}
+
+func getLatestGinbootVersion() string {
+	resp, err := http.Get("https://api.github.com/repos/Klass-lk/GinBoot/releases/latest")
+	if err != nil {
+		return "v1.14.2"
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "v1.14.2"
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "v1.14.2"
+	}
+
+	var release GitHubRelease
+	if err := json.Unmarshal(body, &release); err != nil {
+		return "v1.14.2"
+	}
+
+	return release.TagName
+}
 
 type ProjectGenerator struct {
 	ProjectPath  string
@@ -36,6 +67,7 @@ func (g *ProjectGenerator) Generate() error {
 		"internal/repository",
 		"internal/model",
 		"internal/service",
+		"internal/di",
 	}
 
 	for _, dir := range dirs {
@@ -77,7 +109,7 @@ func (g *ProjectGenerator) Generate() error {
 		goModTmpl = goModNoneTemplate
 		dockerComposeTmpl = dockerComposeNoneTemplate
 		userModelTmpl = userModelNoneTemplate
-		userRepoTmpl = userRepositoryNoneTemplate
+		userRepoTmpl = "" // Removed for inmemory pattern
 	}
 
 	// Generate files
@@ -106,8 +138,12 @@ func (g *ProjectGenerator) Generate() error {
 	internalFiles := map[string]string{
 		"internal/controller/user_controller.go": userControllerTemplate,
 		"internal/model/user.go":                 userModelTmpl,
-		"internal/repository/user_repository.go": userRepoTmpl,
 		"internal/service/user_service.go":       userServiceTemplate,
+		"internal/di/container.go":               diContainerTemplate,
+	}
+	
+	if userRepoTmpl != "" {
+		internalFiles["internal/repository/user_repository.go"] = userRepoTmpl
 	}
 
 	for filename, tmpl := range internalFiles {
@@ -134,17 +170,21 @@ func (g *ProjectGenerator) generateFile(filename, tmplContent string) error {
 	defer f.Close()
 
 	data := struct {
-		ProjectName string
-		ModuleName  string
-		GoVersion   string
-		HasS3       bool
-		HasLambda   bool
+		ProjectName    string
+		ModuleName     string
+		GoVersion      string
+		DatabaseType   string
+		GinbootVersion string
+		HasS3          bool
+		HasLambda      bool
 	}{
-		ProjectName: g.ProjectName,
-		ModuleName:  g.ModuleName,
-		GoVersion:   g.GoVersion,
-		HasS3:       g.StorageType == "s3",
-		HasLambda:   g.DeployType == "lambda",
+		ProjectName:    g.ProjectName,
+		ModuleName:     g.ModuleName,
+		GoVersion:      g.GoVersion,
+		DatabaseType:   g.DatabaseType,
+		GinbootVersion: getLatestGinbootVersion(),
+		HasS3:          g.StorageType == "s3",
+		HasLambda:      g.DeployType == "lambda",
 	}
 
 	if err := tmpl.Execute(f, data); err != nil {
