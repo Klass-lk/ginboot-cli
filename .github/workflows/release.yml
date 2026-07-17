@@ -10,8 +10,36 @@ on:
       - '.github/workflows/release.yml'
 
 jobs:
+  test:
+    name: Run Combinations Test
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    steps:
+    - name: Checkout ginboot-cli
+      uses: actions/checkout@v4
+      with:
+        path: ginboot-cli
+
+    - name: Checkout ginboot framework
+      uses: actions/checkout@v4
+      with:
+        repository: Klass-lk/GinBoot
+        path: ginboot
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Run Test Combinations
+      run: |
+        cd ginboot-cli
+        chmod +x scripts/test_combinations.sh
+        ./scripts/test_combinations.sh ../ginboot
+
   release:
     name: Create Release
+    needs: test
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip ci')"
 

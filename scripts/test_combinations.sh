@@ -70,10 +70,10 @@ for db in "${DBS[@]}"; do
       
       if go build -o /dev/null; then
         echo "✅ SUCCESS"
-        ((success_count++))
+        success_count=$((success_count + 1))
       else
         echo "❌ FAILED"
-        ((fail_count++))
+        fail_count=$((fail_count + 1))
         failed_combos+=("$project_name")
       fi
       
