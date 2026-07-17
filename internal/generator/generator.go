@@ -79,33 +79,30 @@ func (g *ProjectGenerator) Generate() error {
 	// Select templates based on database choice
 	var mainTmpl, goModTmpl, dockerComposeTmpl, userModelTmpl, userRepoTmpl string
 
+	mainTmpl = mainTemplate
+
 	switch g.DatabaseType {
 	case "mongodb":
-		mainTmpl = mainMongoTemplate
 		goModTmpl = goModMongoTemplate
 		dockerComposeTmpl = dockerComposeMongoTemplate
 		userModelTmpl = userModelMongoTemplate
 		userRepoTmpl = userRepositoryMongoTemplate
 	case "postgres":
-		mainTmpl = mainPostgresTemplate
 		goModTmpl = goModPostgresTemplate
 		dockerComposeTmpl = dockerComposePostgresTemplate
 		userModelTmpl = userModelPostgresTemplate
 		userRepoTmpl = userRepositoryPostgresTemplate
 	case "mysql":
-		mainTmpl = mainMysqlTemplate
 		goModTmpl = goModMysqlTemplate
 		dockerComposeTmpl = dockerComposeMysqlTemplate
 		userModelTmpl = userModelMysqlTemplate
 		userRepoTmpl = userRepositoryMysqlTemplate
 	case "dynamodb":
-		mainTmpl = mainDynamodbTemplate
 		goModTmpl = goModDynamodbTemplate
 		dockerComposeTmpl = dockerComposeDynamodbTemplate
 		userModelTmpl = userModelDynamodbTemplate
 		userRepoTmpl = userRepositoryDynamodbTemplate
 	default: // "none"
-		mainTmpl = mainNoneTemplate
 		goModTmpl = goModNoneTemplate
 		dockerComposeTmpl = dockerComposeNoneTemplate
 		userModelTmpl = userModelNoneTemplate

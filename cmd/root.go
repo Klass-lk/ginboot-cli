@@ -19,4 +19,6 @@ func init() {
 	rootCmd.AddCommand(newCmd)
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(deployCmd)
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(updateCmd)
 }

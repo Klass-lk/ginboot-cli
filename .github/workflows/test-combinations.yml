@@ -1,0 +1,33 @@
+name: Test Generated Combinations
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-combinations:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout ginboot-cli
+      uses: actions/checkout@v4
+      with:
+        path: ginboot-cli
+
+    - name: Checkout ginboot framework
+      uses: actions/checkout@v4
+      with:
+        repository: Klass-lk/GinBoot
+        path: ginboot
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21' # Adjust if a different version is preferred
+
+    - name: Run Test Combinations
+      run: |
+        cd ginboot-cli
+        chmod +x scripts/test_combinations.sh
+        ./scripts/test_combinations.sh ../ginboot

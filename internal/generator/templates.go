@@ -767,20 +767,36 @@ func (r *UserRepository) Save(user model.User) error {
 // None (In-Memory) Templates
 // =============================================================================
 
-const mainNoneTemplate = `package main
+const mainTemplate = `package main
 
 import (
 	"log"
-	{{ if .HasLambda }}"os"{{ end }}
+	{{ if or .HasS3 .HasLambda }}"os"{{ end }}
+	{{ if .HasS3 }}"context"{{ end }}
 
 	"{{.ModuleName}}/internal/di"
 	"github.com/klass-lk/ginboot"
 	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
+	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
 )
 
 func main() {
 	// Initialize Ginboot app
 	app := ginboot.New()
+
+	{{ if .HasS3 }}
+	// Initialize file service (AWS S3)
+	fileService := s3.NewS3FileService(
+		context.Background(),
+		os.Getenv("S3_BUCKET"),
+		"./local",
+		os.Getenv("AWS_ACCESS_KEY_ID"),
+		os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		os.Getenv("AWS_REGION"),
+		"3600",
+	)
+	app.BindFileService(fileService)
+	{{ end }}
 
 	{{ if .HasLambda }}
 	// Initialize Lambda runner if running on AWS Lambda
@@ -830,14 +846,19 @@ type User struct {
 const diContainerTemplate = `package di
 
 import (
+	{{ if ne .DatabaseType "none" }}"log"{{ end }}
+	{{ if ne .DatabaseType "none" }}"os"{{ end }}
+
 	"{{.ModuleName}}/internal/controller"
-	"{{.ModuleName}}/internal/model"
+	{{ if eq .DatabaseType "none" }}"{{.ModuleName}}/internal/model"{{ end }}
 	"{{.ModuleName}}/internal/service"
 	{{ if ne .DatabaseType "none" }}"{{.ModuleName}}/internal/repository"{{ end }}
 	"github.com/klass-lk/ginboot"
 	{{ if eq .DatabaseType "none" }}"github.com/klass-lk/ginboot/db/inmemory"{{ end }}
 	{{ if eq .DatabaseType "dynamodb" }}"github.com/klass-lk/ginboot/db/dynamodb"{{ end }}
 	{{ if eq .DatabaseType "mongodb" }}"github.com/klass-lk/ginboot/db/mongo"{{ end }}
+	{{ if eq .DatabaseType "postgres" }}"github.com/klass-lk/ginboot/db/sql"{{ end }}
+	{{ if eq .DatabaseType "mysql" }}"github.com/klass-lk/ginboot/db/sql"{{ end }}
 )
 
 type Container struct {
@@ -868,15 +889,55 @@ func InitializeRepositories() *Repository {
 	return &Repository{
 		UserRepository: userRepository,
 	}
-	{{ else if eq .DatabaseType "dynamodb" }}
-	// Example initialization for DynamoDB
-	// client := dynamodb.NewClient(...) 
-	// userRepository := repository.NewUserRepository(client)
-	return &Repository{
-		// UserRepository: userRepository,
+	{{ else if eq .DatabaseType "mongodb" }}
+	config := mongo.NewMongoConfig().
+		WithHost("localhost", 27017).
+		WithDatabase(os.Getenv("DB_NAME"))
+	db, err := config.Connect()
+	if err != nil {
+		log.Fatal(err)
 	}
-	{{ else }}
-	return &Repository{}
+	userRepository := repository.NewUserRepository(db)
+	return &Repository{
+		UserRepository: userRepository,
+	}
+	{{ else if eq .DatabaseType "postgres" }}
+	config := sql.NewSQLConfig().
+		WithDriver("postgres").
+		WithHost("localhost", 5432).
+		WithCredentials(os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD")).
+		WithDatabase(os.Getenv("DB_NAME"))
+	db, err := config.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	userRepository := repository.NewUserRepository(db)
+	return &Repository{
+		UserRepository: userRepository,
+	}
+	{{ else if eq .DatabaseType "mysql" }}
+	config := sql.NewSQLConfig().
+		WithDriver("mysql").
+		WithHost("localhost", 3306).
+		WithCredentials(os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD")).
+		WithDatabase(os.Getenv("DB_NAME"))
+	db, err := config.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	userRepository := repository.NewUserRepository(db)
+	return &Repository{
+		UserRepository: userRepository,
+	}
+	{{ else if eq .DatabaseType "dynamodb" }}
+	client, err := dynamodb.NewDynamoDBClient(os.Getenv("AWS_REGION"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	userRepository := repository.NewUserRepository(client)
+	return &Repository{
+		UserRepository: userRepository,
+	}
 	{{ end }}
 }
 
