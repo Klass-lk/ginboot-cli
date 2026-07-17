@@ -32,7 +32,11 @@ var newCmd = &cobra.Command{
 		}
 
 		if moduleName == "" {
-			moduleName = fmt.Sprintf("github.com/%s/%s", os.Getenv("USER"), projectName)
+			user := os.Getenv("USER")
+			if user == "" {
+				user = "example"
+			}
+			moduleName = fmt.Sprintf("github.com/%s/%s", user, projectName)
 		}
 
 		if goVersion == "" {
