@@ -187,12 +187,14 @@ CMD ["./main"]
 
 const mainMongoTemplate = `package main
 
-import (
+import (	"log/slog"
+
 	"log"
 	"os"
-	{{ if .HasS3 }}"context"{{ end }}
+	"context"
 
 	"github.com/klass-lk/ginboot"
+	"github.com/klass-lk/ginboot/telemetry"
 	"github.com/klass-lk/ginboot/db/mongo"
 	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
 	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
@@ -218,6 +220,16 @@ func main() {
 
 	// Initialize Ginboot app
 	app := ginboot.New()
+
+	// Setup Telemetry
+	shutdown, err := telemetry.Setup(context.Background(), "{{.ModuleName}}", "1.0.0")
+	if err != nil {
+		log.Printf("failed to setup telemetry: %v", err)
+	} else {
+		defer shutdown(context.Background())
+		logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		telemetry.Instrument(app, "{{.ModuleName}}", logger)
+	}
 
 	{{ if .HasS3 }}
 	// Initialize file service (AWS S3)
@@ -260,6 +272,7 @@ go {{ .GoVersion }}
 require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/klass-lk/ginboot {{ .GinbootVersion }}
+	github.com/klass-lk/ginboot/telemetry {{ .GinbootVersion }}
 	github.com/klass-lk/ginboot/db/mongo {{ .GinbootVersion }}
 	go.mongodb.org/mongo-driver v1.17.1
 	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 {{ .GinbootVersion }}{{ end }}
@@ -337,12 +350,14 @@ func NewUserRepository(database *mongoDriver.Database) *UserRepository {
 
 const mainPostgresTemplate = `package main
 
-import (
+import (	"log/slog"
+
 	"log"
 	"os"
-	{{ if .HasS3 }}"context"{{ end }}
+	"context"
 
 	"github.com/klass-lk/ginboot"
+	"github.com/klass-lk/ginboot/telemetry"
 	"github.com/klass-lk/ginboot/db/sql"
 	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
 	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
@@ -372,6 +387,16 @@ func main() {
 
 	// Initialize Ginboot app
 	app := ginboot.New()
+
+	// Setup Telemetry
+	shutdown, err := telemetry.Setup(context.Background(), "{{.ModuleName}}", "1.0.0")
+	if err != nil {
+		log.Printf("failed to setup telemetry: %v", err)
+	} else {
+		defer shutdown(context.Background())
+		logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		telemetry.Instrument(app, "{{.ModuleName}}", logger)
+	}
 
 	{{ if .HasS3 }}
 	// Initialize file service (AWS S3)
@@ -409,12 +434,14 @@ func main() {
 
 const mainMysqlTemplate = `package main
 
-import (
+import (	"log/slog"
+
 	"log"
 	"os"
-	{{ if .HasS3 }}"context"{{ end }}
+	"context"
 
 	"github.com/klass-lk/ginboot"
+	"github.com/klass-lk/ginboot/telemetry"
 	"github.com/klass-lk/ginboot/db/sql"
 	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
 	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
@@ -444,6 +471,16 @@ func main() {
 
 	// Initialize Ginboot app
 	app := ginboot.New()
+
+	// Setup Telemetry
+	shutdown, err := telemetry.Setup(context.Background(), "{{.ModuleName}}", "1.0.0")
+	if err != nil {
+		log.Printf("failed to setup telemetry: %v", err)
+	} else {
+		defer shutdown(context.Background())
+		logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		telemetry.Instrument(app, "{{.ModuleName}}", logger)
+	}
 
 	{{ if .HasS3 }}
 	// Initialize file service (AWS S3)
@@ -486,6 +523,7 @@ go {{ .GoVersion }}
 require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/klass-lk/ginboot {{ .GinbootVersion }}
+	github.com/klass-lk/ginboot/telemetry {{ .GinbootVersion }}
 	github.com/klass-lk/ginboot/db/sql {{ .GinbootVersion }}
 	github.com/lib/pq v1.10.9
 	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 {{ .GinbootVersion }}{{ end }}
@@ -499,6 +537,7 @@ go {{ .GoVersion }}
 require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/klass-lk/ginboot {{ .GinbootVersion }}
+	github.com/klass-lk/ginboot/telemetry {{ .GinbootVersion }}
 	github.com/klass-lk/ginboot/db/sql {{ .GinbootVersion }}
 	github.com/go-sql-driver/mysql v1.8.1
 	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 {{ .GinbootVersion }}{{ end }}
@@ -614,12 +653,14 @@ const userRepositoryMysqlTemplate = userRepositoryPostgresTemplate
 
 const mainDynamodbTemplate = `package main
 
-import (
+import (	"log/slog"
+
 	"log"
 	"os"
-	{{ if .HasS3 }}"context"{{ end }}
+	"context"
 
 	"github.com/klass-lk/ginboot"
+	"github.com/klass-lk/ginboot/telemetry"
 	"github.com/klass-lk/ginboot/db/dynamodb"
 	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
 	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
@@ -647,6 +688,16 @@ func main() {
 
 	// Initialize Ginboot app
 	app := ginboot.New()
+
+	// Setup Telemetry
+	shutdown, err := telemetry.Setup(context.Background(), "{{.ModuleName}}", "1.0.0")
+	if err != nil {
+		log.Printf("failed to setup telemetry: %v", err)
+	} else {
+		defer shutdown(context.Background())
+		logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		telemetry.Instrument(app, "{{.ModuleName}}", logger)
+	}
 
 	{{ if .HasS3 }}
 	// Initialize file service (AWS S3)
@@ -692,6 +743,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.50.3
 	github.com/gin-gonic/gin v1.10.0
 	github.com/klass-lk/ginboot {{ .GinbootVersion }}
+	github.com/klass-lk/ginboot/telemetry {{ .GinbootVersion }}
 	github.com/klass-lk/ginboot/db/dynamodb {{ .GinbootVersion }}
 	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 {{ .GinbootVersion }}{{ end }}
 	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda {{ .GinbootVersion }}{{ end }}
@@ -770,12 +822,14 @@ func (r *UserRepository) Save(user model.User) error {
 const mainTemplate = `package main
 
 import (
+	"context"
 	"log"
-	{{ if or .HasS3 .HasLambda }}"os"{{ end }}
-	{{ if .HasS3 }}"context"{{ end }}
+	"log/slog"
+	"os"
 
 	"{{.ModuleName}}/internal/di"
 	"github.com/klass-lk/ginboot"
+	"github.com/klass-lk/ginboot/telemetry"
 	{{ if .HasLambda }}"github.com/klass-lk/ginboot/runtime/lambda"{{ end }}
 	{{ if .HasS3 }}"github.com/klass-lk/ginboot/storage/s3"{{ end }}
 )
@@ -783,6 +837,16 @@ import (
 func main() {
 	// Initialize Ginboot app
 	app := ginboot.New()
+
+	// Setup Telemetry
+	shutdown, err := telemetry.Setup(context.Background(), "{{.ModuleName}}", "1.0.0")
+	if err != nil {
+		log.Printf("failed to setup telemetry: %v", err)
+	} else {
+		defer shutdown(context.Background())
+		logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		telemetry.Instrument(app, "{{.ModuleName}}", logger)
+	}
 
 	{{ if .HasS3 }}
 	// Initialize file service (AWS S3)
@@ -821,6 +885,7 @@ go 1.25.0
 require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/klass-lk/ginboot {{ .GinbootVersion }}
+	github.com/klass-lk/ginboot/telemetry {{ .GinbootVersion }}
 	github.com/klass-lk/ginboot/db/inmemory {{ .GinbootVersion }}
 	{{ if .HasS3 }}github.com/klass-lk/ginboot/storage/s3 {{ .GinbootVersion }}{{ end }}
 	{{ if .HasLambda }}github.com/klass-lk/ginboot/runtime/lambda {{ .GinbootVersion }}{{ end }}
