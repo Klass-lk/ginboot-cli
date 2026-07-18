@@ -46,9 +46,10 @@ type ProjectGenerator struct {
 	DatabaseType string
 	StorageType  string
 	DeployType   string
+	HasTelemetry bool
 }
 
-func NewProjectGenerator(projectPath, projectName, moduleName, goVersion, databaseType, storageType, deployType string) *ProjectGenerator {
+func NewProjectGenerator(projectPath, projectName, moduleName, goVersion, databaseType, storageType, deployType string, hasTelemetry bool) *ProjectGenerator {
 	return &ProjectGenerator{
 		ProjectPath:  projectPath,
 		ProjectName:  projectName,
@@ -57,6 +58,7 @@ func NewProjectGenerator(projectPath, projectName, moduleName, goVersion, databa
 		DatabaseType: databaseType,
 		StorageType:  storageType,
 		DeployType:   deployType,
+		HasTelemetry: hasTelemetry,
 	}
 }
 
@@ -79,30 +81,33 @@ func (g *ProjectGenerator) Generate() error {
 	// Select templates based on database choice
 	var mainTmpl, goModTmpl, dockerComposeTmpl, userModelTmpl, userRepoTmpl string
 
-	mainTmpl = mainTemplate
-
 	switch g.DatabaseType {
 	case "mongodb":
+		mainTmpl = mainMongoTemplate
 		goModTmpl = goModMongoTemplate
 		dockerComposeTmpl = dockerComposeMongoTemplate
 		userModelTmpl = userModelMongoTemplate
 		userRepoTmpl = userRepositoryMongoTemplate
 	case "postgres":
+		mainTmpl = mainPostgresTemplate
 		goModTmpl = goModPostgresTemplate
 		dockerComposeTmpl = dockerComposePostgresTemplate
 		userModelTmpl = userModelPostgresTemplate
 		userRepoTmpl = userRepositoryPostgresTemplate
 	case "mysql":
+		mainTmpl = mainMysqlTemplate
 		goModTmpl = goModMysqlTemplate
 		dockerComposeTmpl = dockerComposeMysqlTemplate
 		userModelTmpl = userModelMysqlTemplate
 		userRepoTmpl = userRepositoryMysqlTemplate
 	case "dynamodb":
+		mainTmpl = mainDynamodbTemplate
 		goModTmpl = goModDynamodbTemplate
 		dockerComposeTmpl = dockerComposeDynamodbTemplate
 		userModelTmpl = userModelDynamodbTemplate
 		userRepoTmpl = userRepositoryDynamodbTemplate
 	default: // "none"
+		mainTmpl = mainTemplate
 		goModTmpl = goModNoneTemplate
 		dockerComposeTmpl = dockerComposeNoneTemplate
 		userModelTmpl = userModelNoneTemplate
@@ -174,6 +179,7 @@ func (g *ProjectGenerator) generateFile(filename, tmplContent string) error {
 		GinbootVersion string
 		HasS3          bool
 		HasLambda      bool
+		HasTelemetry   bool
 	}{
 		ProjectName:    g.ProjectName,
 		ModuleName:     g.ModuleName,
@@ -182,6 +188,7 @@ func (g *ProjectGenerator) generateFile(filename, tmplContent string) error {
 		GinbootVersion: getLatestGinbootVersion(),
 		HasS3:          g.StorageType == "s3",
 		HasLambda:      g.DeployType == "lambda",
+		HasTelemetry:   g.HasTelemetry,
 	}
 
 	if err := tmpl.Execute(f, data); err != nil {

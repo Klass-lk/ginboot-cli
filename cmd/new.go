@@ -16,6 +16,7 @@ var (
 	dbType      string
 	storageType string
 	deployType  string
+	telemetry   bool
 )
 
 var newCmd = &cobra.Command{
@@ -79,7 +80,7 @@ var newCmd = &cobra.Command{
 			return fmt.Errorf("failed to create project directory: %w", err)
 		}
 
-		gen := generator.NewProjectGenerator(projectPath, projectName, moduleName, goVersion, dbType, storageType, deployType)
+		gen := generator.NewProjectGenerator(projectPath, projectName, moduleName, goVersion, dbType, storageType, deployType, telemetry)
 		if err := gen.Generate(); err != nil {
 			return fmt.Errorf("failed to generate project: %w", err)
 		}
@@ -111,4 +112,5 @@ func init() {
 	newCmd.Flags().StringVar(&dbType, "db", "", "Database type: none, mongodb, postgres, mysql, dynamodb")
 	newCmd.Flags().StringVar(&storageType, "storage", "", "Storage type: none, s3")
 	newCmd.Flags().StringVar(&deployType, "deploy", "", "Deployment type: http, lambda")
+	newCmd.Flags().BoolVar(&telemetry, "telemetry", false, "Enable OpenTelemetry support")
 }
